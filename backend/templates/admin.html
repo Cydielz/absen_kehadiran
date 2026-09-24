@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Absensi Siswa</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f3f7fb;color:#12233b}
+.wrap{max-width:1200px;margin:30px auto;padding:0 16px}
+.hero{background:#0b4f8a;color:#fff;padding:24px;border-radius:18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.hero form{margin:0}
+.hero button{width:auto;background:#083b68}
+.grid{display:grid;grid-template-columns:1fr 1.7fr;gap:18px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:16px;padding:18px;box-shadow:0 5px 20px rgba(0,0,0,.06);margin-bottom:18px}
+input,select,button{width:100%;padding:11px;border-radius:10px;border:1px solid #cbd5e1;box-sizing:border-box;margin:5px 0}
+button{background:#0b4f8a;color:white;border:0;font-weight:700;cursor:pointer}
+.btn2{background:#0d7b59}
+.btn3{background:#7a5a00}
+.msg{padding:10px;border-radius:10px;background:#e9f7ef;margin:6px 0;font-size:14px}
+.err{background:#fee2e2}
+.muted{color:#64748b}
+.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}
+th{background:#eff6ff;position:sticky;top:0}
+.status-Hadir{color:#0d7b59;font-weight:700}
+.status-Izin{color:#7a5a00;font-weight:700}
+.status-Sakit{color:#a3540b;font-weight:700}
+.status-Alpa{color:#b91c1c;font-weight:700}
+.inline-form{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inline-form select,.inline-form input{width:auto;flex:1;min-width:110px}
+code{background:#eef2f7;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="hero">
+  <div><h1 style="margin:0">ABSENSI SISWA</h1><div>Login sebagai <b>{{ current_user.username }}</b></div></div>
+  <form method="post" action="{{ url_for('logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">Logout</button>
+  </form>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="msg {% if cat=='error' %}err{% endif %}">{{msg}}</div>{% endfor %}{% endwith %}
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <h2>Tambah Siswa</h2>
+      <form method="post" action="{{ url_for('add_student') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="nisn" placeholder="NISN" required>
+        <input name="nama" placeholder="Nama lengkap" required>
+        <input name="kelas" placeholder="Kelas (X IPA 1)" required>
+        <input name="whatsapp_ortu" placeholder="WhatsApp orang tua, contoh 0812xxxx">
+        <button>Simpan Siswa</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Catat Status Manual</h2>
+      <p class="muted" style="font-size:13px">Untuk siswa yang tidak scan (Izin/Sakit/Alpa), atau koreksi status.</p>
+      <form method="post" action="{{ url_for('set_manual_status') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="siswa_id" required>
+          <option value="" disabled selected>Pilih siswa</option>
+          {% for s in students %}<option value="{{ s['id'] }}">{{ s['nama'] }} — {{ s['kelas'] }}</option>{% endfor %}
+        </select>
+        <input type="date" name="tanggal" value="{{ tanggal }}" required>
+        <select name="status" required>
+          <option value="" disabled selected>Pilih status</option>
+          <option value="Izin">Izin</option>
+          <option value="Sakit">Sakit</option>
+          <option value="Alpa">Alpa</option>
+          <option value="Hadir">Hadir (manual)</option>
+        </select>
+        <input name="keterangan" placeholder="Keterangan (opsional)">
+        <button class="btn3">Simpan Status</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Perangkat Scanner</h2>
+      <p class="muted" style="font-size:13px">Hanya perangkat dengan kode di bawah yang boleh memanggil endpoint <code>/scan</code>.</p>
+      <form method="post" action="{{ url_for('add_device') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="nama_perangkat" placeholder="Nama perangkat, contoh: HP Gerbang Utama" required>
+        <button class="btn2">Buat Perangkat &amp; Kode Baru</button>
+      </form>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <tr><th>Nama Perangkat</th><th>Status</th><th>Aksi</th></tr>
+          {% for d in devices %}
+          <tr>
+            <td>{{ d['nama_perangkat'] }}</td>
+            <td>{{ 'Aktif' if d['aktif'] else 'Nonaktif' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('toggle_device', device_id=d['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn3">{{ 'Nonaktifkan' if d['aktif'] else 'Aktifkan' }}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p class="muted" style="font-size:12px">Kode API hanya ditampilkan sekali saat perangkat dibuat (lihat pesan notifikasi di atas). Kalau hilang, nonaktifkan lalu buat perangkat baru.</p>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Rekap Absensi</h2>
+      <form method="get" class="inline-form" style="margin-bottom:10px">
+        <label class="muted" style="width:auto">Tanggal:</label>
+        <input type="date" name="tanggal" value="{{ tanggal }}" onchange="this.form.submit()">
+        <a href="{{ url_for('export_rekap', tanggal=tanggal) }}" style="flex:1"><button type="button" class="btn2">Export CSV</button></a>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <tr><th>NISN</th><th>Nama</th><th>Kelas</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Keterangan</th><th>Dicatat oleh</th></tr>
+          {% for r in rekap %}
+          <tr>
+            <td>{{ r['nisn'] }}</td><td>{{ r['nama'] }}</td><td>{{ r['kelas'] }}</td>
+            <td>{{ r['jam_masuk'] or '-' }}</td><td>{{ r['jam_keluar'] or '-' }}</td>
+            <td class="status-{{ r['status'] }}">{{ r['status'] }}</td>
+            <td>{{ r['keterangan'] or '-' }}</td>
+            <td class="muted">{{ r['dicatat_oleh'] or '-' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="muted">Belum ada data untuk tanggal ini.</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Siswa Terdaftar</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>NISN</th><th>Nama</th><th>Kelas</th><th>WA Ortu</th><th>Status</th><th>Aksi</th></tr>
+          {% for s in students %}
+          <tr>
+            <td>{{s['nisn']}}</td><td>{{s['nama']}}</td><td>{{s['kelas']}}</td>
+            <td>{{s['whatsapp_ortu'] or '-'}}</td><td>{{'Aktif' if s['aktif'] else 'Nonaktif'}}</td>
+            <td>
+              <form method="post" action="{{ url_for('toggle_student', siswa_id=s['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn3">{{'Nonaktifkan' if s['aktif'] else 'Aktifkan'}}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</body></html>

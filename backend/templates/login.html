@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login Admin - Absensi Siswa</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f3f7fb;color:#12233b;display:flex;min-height:100vh;align-items:center;justify-content:center}
+.card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 5px 20px rgba(0,0,0,.08);width:100%;max-width:360px}
+h1{font-size:20px;margin:0 0 4px}
+.muted{color:#64748b;font-size:13px;margin:0 0 18px}
+input{width:100%;padding:11px;border-radius:10px;border:1px solid #cbd5e1;box-sizing:border-box;margin:6px 0}
+button{width:100%;padding:11px;border-radius:10px;border:0;background:#0b4f8a;color:#fff;font-weight:700;cursor:pointer;margin-top:8px}
+.msg{padding:10px;border-radius:10px;background:#e9f7ef;margin:6px 0;font-size:13px}
+.err{background:#fee2e2}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>ABSENSI SISWA</h1>
+<p class="muted">Login admin untuk mengelola data siswa &amp; absensi.</p>
+{% with messages = get_flashed_messages(with_categories=true) %}{% for cat,msg in messages %}<div class="msg {% if cat=='error' %}err{% endif %}">{{msg}}</div>{% endfor %}{% endwith %}
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input name="username" placeholder="Username" required autofocus>
+<input name="password" type="password" placeholder="Password" required>
+<button>Login</button>
+</form>
+</div>
+</body></html>
