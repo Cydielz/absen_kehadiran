@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -83,11 +84,22 @@ public class MainActivity extends AppCompatActivity {
         header.setOrientation(LinearLayout.VERTICAL);
         header.setPadding(dp(18), dp(20), dp(18), dp(20));
         header.setBackgroundColor(blue900);
+        header.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.logo);
+        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(dp(84), dp(84));
+        logoLp.bottomMargin = dp(10);
+        logo.setLayoutParams(logoLp);
+        header.addView(logo);
+
         TextView title = text("ABSENSI SISWA", 25, white);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setGravity(Gravity.CENTER_HORIZONTAL);
         header.addView(title);
         TextView subtitle = text("Scan QR Code NISN untuk mencatat kehadiran", 14, Color.WHITE);
         subtitle.setPadding(0, dp(6), 0, 0);
+        subtitle.setGravity(Gravity.CENTER_HORIZONTAL);
         header.addView(subtitle);
         root.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
@@ -304,7 +316,15 @@ public class MainActivity extends AppCompatActivity {
             String wa = "";
             if (obj.has("whatsapp")) {
                 JSONObject w = obj.optJSONObject("whatsapp");
-                if (w != null) wa = "\nWhatsApp: " + (w.optBoolean("sent", false) ? "notifikasi terkirim" : "tidak terkirim / belum dikonfigurasi");
+                if (w != null) {
+                    boolean sent = w.optBoolean("sent", false);
+                    if (sent) {
+                        wa = "\nWhatsApp: notifikasi terkirim";
+                    } else {
+                        String reason = w.optString("reason", "");
+                        wa = "\nWhatsApp: GAGAL terkirim" + (reason.isEmpty() ? "" : " (" + reason + ")");
+                    }
+                }
             }
             resultText.setText(message + student + extra + wa + "\n\nHTTP " + httpStatus);
         } catch (Exception e) {

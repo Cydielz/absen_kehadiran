@@ -3,12 +3,12 @@
 ## 1. Jalankan di Windows/Python
 ```bat
 cd backend
-py -m venv .venv
+\.venv\Scripts\Activate.ps1
 .venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-py seed.py
-py app.py
+python seed.py
+python app.py
 ```
 
 `seed.py` akan membuat:
@@ -21,6 +21,8 @@ Server mendengarkan pada `http://0.0.0.0:5000`. Dari HP di Wi-Fi yang sama, guna
 
 ## 2. Login admin
 Semua halaman `/` dan `/admin/*` sekarang **wajib login** (Flask-Login). Buka `http://IP-SERVER:5000/login`, masukkan username & password dari output `seed.py`.
+
+**Lupa password admin?** Jalankan `python reset_admin.py` dari folder `backend` (venv aktif), ikuti instruksi di layar untuk memasukkan password baru. Tidak perlu hapus database atau kehilangan data siswa/absensi.
 
 ## 3. Perangkat scanner (X-Device-Key)
 `POST /scan` sekarang **wajib** header `X-Device-Key` yang cocok dengan salah satu perangkat aktif di tabel `devices`. Cara menambah perangkat baru:

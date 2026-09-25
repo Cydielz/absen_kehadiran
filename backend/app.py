@@ -477,6 +477,21 @@ def toggle_student(siswa_id):
     return redirect(url_for('home'))
 
 
+@app.post('/admin/siswa/<int:siswa_id>/delete')
+@login_required
+def delete_student(siswa_id):
+    conn = db()
+    row = conn.execute('SELECT nama FROM siswa WHERE id=?', (siswa_id,)).fetchone()
+    if row:
+        # ON DELETE CASCADE pada tabel absensi ikut menghapus seluruh riwayat
+        # absensi siswa ini -- tidak bisa dibatalkan setelah ini.
+        conn.execute('DELETE FROM siswa WHERE id=?', (siswa_id,))
+        conn.commit()
+        flash(f'Siswa "{row["nama"]}" beserta seluruh riwayat absensinya dihapus permanen.', 'success')
+    conn.close()
+    return redirect(url_for('home'))
+
+
 @app.post('/admin/status')
 @login_required
 def set_manual_status():
@@ -601,6 +616,19 @@ def toggle_device(device_id):
     return redirect(url_for('home'))
 
 
+@app.post('/admin/devices/<int:device_id>/delete')
+@login_required
+def delete_device(device_id):
+    conn = db()
+    row = conn.execute('SELECT nama_perangkat FROM devices WHERE id=?', (device_id,)).fetchone()
+    if row:
+        conn.execute('DELETE FROM devices WHERE id=?', (device_id,))
+        conn.commit()
+        flash(f'Perangkat "{row["nama_perangkat"]}" dihapus. Kode API-nya langsung tidak berlaku.', 'success')
+    conn.close()
+    return redirect(url_for('home'))
+
+
 @app.get('/api/qr/<nisn>')
 @login_required
 def qr_payload(nisn):
@@ -610,6 +638,33 @@ def qr_payload(nisn):
     if not row:
         return jsonify({'success': False, 'message': 'Siswa tidak ditemukan.'}), 404
     return jsonify({'success': True, 'qr_value': row['nisn'], 'student': dict(row)})
+
+
+@app.post('/admin/test-wa')
+@login_required
+def test_wa():
+    """Kirim pesan uji coba ke satu nomor, supaya admin bisa lihat langsung
+    respons/alasan gagal dari Fonnte tanpa harus scan QR fisik dulu."""
+    nomor = request.form.get('nomor', '').strip()
+    if not nomor:
+        flash('Nomor WhatsApp tujuan tes wajib diisi.', 'error')
+        return redirect(url_for('home'))
+
+    token = os.getenv('FONNTE_TOKEN', '').strip()
+    if not token or token == 'ISI_TOKEN_FONNTE_DI_SINI':
+        flash(
+            'FONNTE_TOKEN belum diisi di backend/.env (masih nilai placeholder). '
+            'Isi dengan token asli dari dashboard Fonnte, lalu restart server (Ctrl+C, jalankan python app.py lagi).',
+            'error'
+        )
+        return redirect(url_for('home'))
+
+    result = send_whatsapp(nomor, 'Ini pesan uji coba dari sistem Absensi Siswa. Kalau pesan ini sampai, konfigurasi WhatsApp sudah benar.')
+    if result.get('sent'):
+        flash(f'Pesan tes terkirim ke {nomor}. Respons Fonnte: {result.get("response")}', 'success')
+    else:
+        flash(f'Pesan tes GAGAL terkirim ke {nomor}. Detail: {result.get("reason") or result.get("response") or result}', 'error')
+    return redirect(url_for('home'))
 
 
 if __name__ == '__main__':

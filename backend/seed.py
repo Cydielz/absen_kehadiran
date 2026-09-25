@@ -1,3 +1,12 @@
+"""Bootstrap database SEKALI SAJA saat pertama kali dijalankan.
+
+start_server.bat/.sh memanggil skrip ini setiap kali server dinyalakan,
+tapi skrip ini hanya benar-benar membuat data (akun admin, siswa contoh,
+perangkat contoh) kalau database masih benar-benar kosong (belum ada
+akun admin sama sekali). Setelah setup pertama, menjalankan skrip ini
+lagi TIDAK akan menambahkan apa pun -- jadi data yang sudah kamu hapus
+dari panel admin (misalnya siswa contoh) tidak akan muncul lagi sendiri.
+"""
 import os
 import secrets
 from datetime import datetime
@@ -20,18 +29,15 @@ except ZoneInfoNotFoundError:
 init_db()
 conn = db()
 
-# --- Contoh data siswa ---
-rows = [
-    ('0012345678', 'Contoh Siswa 1', 'X IPA 1', '081234567890'),
-    ('0012345679', 'Contoh Siswa 2', 'X IPA 1', '081298765432'),
-]
-for nisn, nama, kelas, wa in rows:
-    conn.execute('''INSERT OR IGNORE INTO siswa (nisn,nama,kelas,whatsapp_ortu,created_at)
-                    VALUES (?,?,?,?,?)''', (nisn, nama, kelas, wa, datetime.now(TZ).isoformat()))
-
-# --- Akun admin default (WAJIB diganti setelah login pertama) ---
 existing_admin = conn.execute('SELECT id FROM admin_users LIMIT 1').fetchone()
-if not existing_admin:
+
+if existing_admin:
+    # Sudah pernah di-setup sebelumnya -> jangan sentuh data apa pun lagi.
+    # Ini yang mencegah siswa/perangkat contoh muncul lagi setelah dihapus.
+    print('Database sudah pernah di-setup sebelumnya, tidak ada yang ditambahkan.')
+    print('(Kalau butuh akun admin baru/reset password, pakai reset_admin.py.)')
+else:
+    # --- Setup pertama kali: buat akun admin ---
     default_username = os.getenv('SEED_ADMIN_USERNAME', 'admin')
     default_password = os.getenv('SEED_ADMIN_PASSWORD') or secrets.token_urlsafe(9)
     conn.execute(
@@ -45,12 +51,18 @@ if not existing_admin:
     print('CATAT password ini sekarang — tidak akan ditampilkan lagi.')
     print('Segera login dan pertimbangkan mengganti kredensial.')
     print('=' * 60)
-else:
-    print('Akun admin sudah ada, tidak membuat akun baru.')
 
-# --- Contoh perangkat scanner (opsional, untuk uji coba lokal) ---
-existing_device = conn.execute('SELECT id FROM devices LIMIT 1').fetchone()
-if not existing_device:
+    # --- Contoh data siswa (hanya sekali, boleh dihapus kapan saja dari panel admin) ---
+    contoh_siswa = [
+        ('0012345678', 'Contoh Siswa 1', 'X IPA 1', '081234567890'),
+        ('0012345679', 'Contoh Siswa 2', 'X IPA 1', '081298765432'),
+    ]
+    for nisn, nama, kelas, wa in contoh_siswa:
+        conn.execute('''INSERT OR IGNORE INTO siswa (nisn,nama,kelas,whatsapp_ortu,created_at)
+                        VALUES (?,?,?,?,?)''', (nisn, nama, kelas, wa, datetime.now(TZ).isoformat()))
+    print('2 siswa contoh ditambahkan (boleh dihapus kapan saja dari panel admin, tidak akan muncul lagi).')
+
+    # --- Contoh perangkat scanner (hanya sekali) ---
     demo_key = secrets.token_hex(16)
     conn.execute(
         'INSERT INTO devices (nama_perangkat, api_key, aktif, created_at) VALUES (?,?,1,?)',
